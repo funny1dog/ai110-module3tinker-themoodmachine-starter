@@ -9,6 +9,8 @@ This class starts with very simple logic:
   - Convert that score into a mood label
 """
 
+import re
+import string
 from typing import List, Dict, Tuple, Optional
 
 from dataset import POSITIVE_WORDS, NEGATIVE_WORDS
@@ -32,6 +34,20 @@ class MoodAnalyzer:
         self.positive_words = set(w.lower() for w in positive_words)
         self.negative_words = set(w.lower() for w in negative_words)
 
+        # Add emoji keywords to the positive and negative sets
+        self.positive_words.update([
+            "happy_emoji", "laughing_emoji", "grinning_face_emoji", "heart_eyes_emoji"
+        ])
+        self.negative_words.update([
+            "sad_emoji", "smiling_face_with_tear_emoji", "crying_face_emoji", "angry_face_emoji"
+        ])
+
+        # Add booster words
+        self.booster_words = set(["so", "very", "really", "wicked"])
+
+        # Sarcasm markers: presence of any of these flips the final score
+        self.sarcasm_markers = set(["sarcastically", "sarcasm"])
+
     # ---------------------------------------------------------------------
     # Preprocessing
     # ---------------------------------------------------------------------
@@ -40,18 +56,42 @@ class MoodAnalyzer:
         """
         Convert raw text into a list of tokens the model can work with.
 
-        TODO: Improve this method.
-
-        Right now, it does the minimum:
+        This method now:
+          - Normalizes repeated characters ("soooo" -> "soo")
+          - Replaces common emojis with descriptive text
+          - Removes punctuation (while preserving apostrophes in contractions)
           - Strips leading and trailing whitespace
           - Converts everything to lowercase
           - Splits on spaces
-
-        Ideas to improve:
-          - Remove punctuation
-          - Handle simple emojis separately (":)", ":-(", "🥲", "😂")
-          - Normalize repeated characters ("soooo" -> "soo")
         """
+        # Normalize repeated characters
+        text = re.sub(r'(.)\1{2,}', r'\1\1', text)
+
+        # Split hyphenated words so "bitter-sweet" becomes "bitter sweet"
+        text = text.replace('-', ' ')
+
+        # Handle emojis by replacing them with descriptive text
+        emoji_map = {
+            ":)": " happy_emoji ",
+            ":-)": " happy_emoji ",
+            "🙂": " happy_emoji ",
+            "😂": " laughing_emoji ",
+            "😀": " grinning_face_emoji ",
+            "😍": " heart_eyes_emoji ",
+            ":(": " sad_emoji ",
+            ":-(": " sad_emoji ",
+            "🥲": " smiling_face_with_tear_emoji ",
+            "😭": " crying_face_emoji ",
+            "😠": " angry_face_emoji "
+        }
+        for emoji, word in emoji_map.items():
+            text = text.replace(emoji, word)
+
+        # Remove punctuation, but keep apostrophes and underscores
+        punctuation_to_remove = string.punctuation.replace("'", "").replace("_", "")
+        translator = str.maketrans('', '', punctuation_to_remove)
+        text = text.translate(translator)
+
         cleaned = text.strip().lower()
         tokens = cleaned.split()
 
@@ -67,23 +107,45 @@ class MoodAnalyzer:
 
         Positive words increase the score.
         Negative words decrease the score.
-
-        TODO: You must choose AT LEAST ONE modeling improvement to implement.
-        For example:
-          - Handle simple negation such as "not happy" or "not bad"
-          - Count how many times each word appears instead of just presence
-          - Give some words higher weights than others (for example "hate" < "annoyed")
-          - Treat emojis or slang (":)", "lol", "💀") as strong signals
+        Handles negation and booster words.
         """
-        # TODO: Implement this method.
-        #   1. Call self.preprocess(text) to get tokens.
-        #   2. Loop over the tokens.
-        #   3. Increase the score for positive words, decrease for negative words.
-        #   4. Return the total score.
-        #
-        # Hint: if you implement negation, you may want to look at pairs of tokens,
-        # like ("not", "happy") or ("never", "fun").
-        pass
+        tokens = self.preprocess(text)
+        score = 0
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+            word_score = 0
+            if token in self.positive_words:
+                word_score = 1
+            elif token in self.negative_words:
+                word_score = -1
+
+            # Check for booster words
+            if i > 0 and tokens[i-1] in self.booster_words:
+                word_score *= 2
+
+            # Check for negation within a 2-token window.
+            # "not happy" (+1) → negative (-1); "not mad" (-1) → neutral (0)
+            # Window of 2 handles "not very happy" and "not really tired".
+            negated = any(
+                tokens[i - k] == 'not'
+                for k in range(1, 3)
+                if i - k >= 0
+            )
+            if negated:
+                if word_score < 0:
+                    word_score = 0
+                else:
+                    word_score *= -1
+            
+            score += word_score
+            i += 1
+
+        # Flip score if sarcasm is explicitly signaled
+        if any(t in self.sarcasm_markers for t in tokens):
+            score *= -1
+
+        return score
 
     # ---------------------------------------------------------------------
     # Label prediction
@@ -105,12 +167,19 @@ class MoodAnalyzer:
         Just remember that whatever labels you return should match the labels
         you use in TRUE_LABELS in dataset.py if you care about accuracy.
         """
-        # TODO: Implement this method.
-        #   1. Call self.score_text(text) to get the numeric score.
-        #   2. Return "positive" if the score is above 0.
-        #   3. Return "negative" if the score is below 0.
-        #   4. Return "neutral" otherwise.
-        pass
+        tokens = self.preprocess(text)
+        score = self.score_text(text)
+        if score > 0:
+            return "positive"
+        elif score < 0:
+            return "negative"
+        else:
+            # A score of 0 with both positive and negative signals = mixed
+            has_positive = any(t in self.positive_words for t in tokens)
+            has_negative = any(t in self.negative_words for t in tokens)
+            if has_positive and has_negative:
+                return "mixed"
+            return "neutral"
 
     # ---------------------------------------------------------------------
     # Explanations (optional but recommended)

@@ -23,6 +23,12 @@ POSITIVE_WORDS = [
     "chill",
     "relaxed",
     "amazing",
+    "wonderful",
+    "proud",    # "exhausted but proud" should register
+    "joy",      # "tears of joy"
+    "sweet",    # half of "bitter-sweet" after hyphen split
+    "sick",     # slang: "this party is sick" = amazing
+    "fire",     # slang: "that song is fire" = great
 ]
 
 NEGATIVE_WORDS = [
@@ -36,6 +42,12 @@ NEGATIVE_WORDS = [
     "stressed",
     "hate",
     "boring",
+    "exhausted",     # stronger than "tired"
+    "mad",           # enables negation: "not mad" flips correctly
+    "disappointed",  # "I'm just disappointed"
+    "meh",           # "feeling pretty meh"
+    "bitter",        # half of "bitter-sweet" after hyphen split
+    "crying",        # usually signals distress
 ]
 
 # ---------------------------------------------------------------------
@@ -50,6 +62,16 @@ SAMPLE_POSTS = [
     "This is fine",
     "So excited for the weekend",
     "I am not happy about this",
+    "This is the best day ever! :D",
+    "I'm so done with all this work. 😩",
+    "I guess it's fine. Whatever.",
+    "I'm excited for the party but also nervous.",
+    "This is lowkey the best pizza I've ever had.",
+    "I absolutely love being ignored. #sarcasm",
+    "No cap, this new album is fire.",
+    "Feeling kinda down today 🥲",
+    "Just finished a marathon, I'm tired but proud.",
+    "This movie is so boring I'm gonna die 💀",
 ]
 
 # Human labels for each post above.
@@ -65,6 +87,16 @@ TRUE_LABELS = [
     "neutral",   # "This is fine"
     "positive",  # "So excited for the weekend"
     "negative",  # "I am not happy about this"
+    "positive",  # "This is the best day ever! :D"
+    "negative",  # "I'm so done with all this work. 😩"
+    "neutral",   # "I guess it's fine. Whatever."
+    "mixed",     # "I'm excited for the party but also nervous."
+    "positive",  # "This is lowkey the best pizza I've ever had."
+    "negative",  # "I absolutely love being ignored. #sarcasm"
+    "positive",  # "No cap, this new album is fire."
+    "negative",  # "Feeling kinda down today 🥲"
+    "mixed",     # "Just finished a marathon, I'm tired but proud."
+    "negative",  # "This movie is so boring I'm gonna die 💀"
 ]
 
 # TODO: Add 5-10 more posts and labels.
